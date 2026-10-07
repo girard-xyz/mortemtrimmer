@@ -1,6 +1,7 @@
 import argparse
 import logging
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -345,7 +346,7 @@ class FFmpegMediaManager(IMediaManager):
     def _verify_ffmpeg_active(self) -> None:
         logger.info("Verifying FFmpeg service integrity and environment isolation...")
         try:
-            subprocess.run(
+            result = subprocess.run(
                 [self._ffmpeg_path, "-version"],
                 check=True,
                 capture_output=True,
@@ -358,6 +359,13 @@ class FFmpegMediaManager(IMediaManager):
             raise RuntimeError(
                 f"System failed to execute FFmpeg (Possible corruption): {e}"
             )
+        self._filter_script_opt = self._detect_filter_script_opt(result.stdout)
+
+    @staticmethod
+    def _detect_filter_script_opt(version_output: str) -> str:
+        match = re.search(r"ffmpeg version n?(\d+)", version_output)
+        major = int(match.group(1)) if match else 0
+        return "-/filter_complex" if major >= 7 else "-filter_complex_script"
 
     def extract_audio(self, video_path: str, temp_audio_path: str) -> None:
         logger.info(
@@ -532,14 +540,14 @@ class FFmpegMediaManager(IMediaManager):
                 f.write(filter_complex)
 
             logger.info(
-                f"Executing precision splice ({n} segments) via filter_complex_script..."
+                f"Executing precision splice ({n} segments) via {self._filter_script_opt}..."
             )
             command = [
                 self._ffmpeg_path,
                 "-y",
                 "-i",
                 media_path,
-                "-filter_complex_script",
+                self._filter_script_opt,
                 fc_path,
                 *map_args,
                 *codec_args,
@@ -848,9 +856,9 @@ def main():
     parser.add_argument(
         "-f",
         "--ffmpeg",
-        default=r"C:\ProgramData\chocolatey\bin\ffmpeg.exe",
+        default=shutil.which("ffmpeg"),
         type=str,
-        help="Absolute path to FFmpeg binary",
+        help="Absolute path to FFmpeg binary (default: auto-detected on PATH)",
     )
 
     args = parser.parse_args()
@@ -860,6 +868,10 @@ def main():
         vad_strategy = StrategyFactory.create_vad(
             args.vad, min_silence_gap=args.min_silence, pad=args.pad
         )
+        if not args.ffmpeg:
+            raise RuntimeError(
+                "FFmpeg not found on PATH. Install it or pass -f/--ffmpeg <path>."
+            )
         media_manager = FFmpegMediaManager(args.ffmpeg)
 
         processor = AudioProcessor(strategy, media_manager, vad_strategy)

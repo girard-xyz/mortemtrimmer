@@ -28,6 +28,10 @@ desktop.ini
 *.manifest.txt
 *.plot.png
 
+# Local data / batch output
+out/
+records
+
 # Release artifacts
 *.zip
 

@@ -138,7 +138,7 @@ python mortem.py -i <input_file> -o <output_file> [options]
 | `--vad` | `str` | `silero` | VAD engine: `none`, `energy`, `whisper`, `silero` |
 | `--min-silence` | `float` | `0.5` | Minimum silence duration (seconds) to trigger a cut |
 | `--pad` | `float` | `0.2` | Padding (seconds) added around each speech boundary |
-| `-f`, `--ffmpeg` | `str` | `C:\ProgramData\chocolatey\bin\ffmpeg.exe` | Path to FFmpeg executable |
+| `-f`, `--ffmpeg` | `str` | auto-detected on `PATH` | Path to FFmpeg executable |
 
 ---
 
